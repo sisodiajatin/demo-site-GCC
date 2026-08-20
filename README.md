@@ -97,4 +97,3 @@ nothing to configure.
 - **The import is additive only** — there's no de-duplication, so importing
   the same file twice creates duplicate rows. A real version would match on
   something like name + city before inserting.
-"# demo-site-GCC" 
