@@ -1,0 +1,100 @@
+# Climate Organizations Map
+
+A small full-stack prototype: an interactive map and directory of community
+climate organizations, built as a project idea for an interview at
+[Green Community Catalysts](https://www.greencommunitycatalysts.com/).
+
+## Why this exists
+
+GCC's own [Localized Climate Action Initiative](https://www.greencommunitycatalysts.com/localized-climate-action-initiative)
+lays out 5 phases — data collection, analysis, mapping, dissemination, and
+solution development — and says outright that they're looking for help with
+phases 2 through 5. As of this project being built, their `/map` page is a
+"work in progress" placeholder and their `/survey-data` page shows static,
+manually-exported chart images rather than a live dashboard.
+
+This project is a small, honest attempt at those two gaps:
+
+| GCC's stated phase | What this project does |
+|---|---|
+| Phase 1 — Data collection | A CSV import endpoint that bulk-loads organizations from a survey-style export, skipping and reporting bad rows instead of failing the whole batch |
+| Phase 2 — Data analysis | The stats bar aggregates org counts by type and focus area live, from whatever's currently filtered — no manual re-export needed |
+| Phase 3 — Mapping organizations | An interactive map with pins, popups, filters by org type / focus area, and free-text search by name or city |
+| Phase 5 — Solution development ("climate resource deserts") | A coverage-gap overlay that grids the map and flags cells with no nearby orgs |
+
+**All data in this project is fictional demo data** — 28 made-up
+organizations spread across real New England towns, built to mirror the
+shape of GCC's real survey (same `org_type` categories, same 6 focus areas,
+same barrier list) without using any of their actual respondents' data.
+
+## Stack
+
+- **Backend:** FastAPI + SQLAlchemy + SQLite
+- **Frontend:** React + TypeScript (Vite) + react-leaflet
+- **Deployment:** Docker Compose (nginx serving the built frontend, proxying
+  `/api` through to the backend container)
+
+## Running it
+
+### Option A — Docker Compose (closest to how it'd actually deploy)
+
+```bash
+docker compose up --build
+```
+
+- Frontend: http://localhost:8080
+- Backend docs: http://localhost:8000/docs
+
+### Option B — locally, for development
+
+```bash
+# backend
+cd backend
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+
+# frontend, in a second terminal
+cd frontend
+npm install
+npm run dev
+```
+
+- Frontend dev server: http://localhost:5173 (proxies API calls to :8000)
+- Backend: http://localhost:8000
+
+The SQLite database is created and seeded automatically on first run —
+nothing to configure.
+
+## API
+
+| Endpoint | What it does |
+|---|---|
+| `GET /organizations` | List orgs. Optional `org_type`, `focus_area`, and `search` (matches name or city) query params |
+| `GET /organizations/{id}` | Single org |
+| `POST /organizations/import-csv` | Bulk-import orgs from a CSV file (multipart upload). See `sample-import.csv` for the expected columns and a ready-to-use example |
+| `GET /coverage-gaps` | Grid cells with no nearby orgs. Optional `grid_size` (degrees, default 0.5) |
+| `GET /stats` | Counts by type and by focus area. Takes the same `org_type`, `focus_area`, and `search` params as `/organizations`, so the stats always describe the current selection |
+
+## Known limitations (said out loud on purpose)
+
+- **Coverage-gap detection is a naive grid scan**, not a real geospatial
+  index. Fine at 28 rows; at real scale I'd reach for PostGIS or a k-d tree
+  for actual nearest-neighbor distance instead of fixed grid cells. The
+  endpoint refuses a `grid_size` that would produce more than 5,000 cells
+  over the current data extent, rather than returning a rectangle list no
+  browser can draw.
+- **Coordinates are validated on import, but nothing else is.** Rows whose
+  lat/lng aren't finite and on the globe are skipped and reported — without
+  that check a single `inf` row would stretch the coverage-gap bounding box
+  until the request never finished. Names, cities, and websites are still
+  taken as given.
+- **`focus_area` filtering happens in Python**, not SQL, because SQLite's
+  JSON querying is awkward. Fine at this scale; at a few thousand rows I'd
+  normalize `focus_areas` into a proper join table.
+- **CSV import has no auth** — anyone who can reach the API can add rows.
+  Fine for a local demo; a real deployment would need at minimum an admin
+  token on the import endpoint before GCC could actually use it.
+- **The import is additive only** — there's no de-duplication, so importing
+  the same file twice creates duplicate rows. A real version would match on
+  something like name + city before inserting.
+"# demo-site-GCC" 
