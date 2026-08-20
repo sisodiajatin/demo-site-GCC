@@ -1,0 +1,4 @@
+name,org_type,latitude,longitude,city,state,focus_areas,age_years,staff_size,barriers,mission_summary,website
+Green Berkshires Youth Corps,organization,42.4072,-73.2479,Lenox,MA,environmental;food,2,1-5,funding;staffing,Youth-led conservation and farm-to-school programs in the Berkshires.,
+Nashua Climate Resilience Office,municipality,42.7654,-71.4676,Nashua,NH,energy;waste,4,6+,community_engagement,City office coordinating Nashua's climate action plan.,https://example.gov/nashua-climate
+Quiet Corner Sustainability Group,organization,41.8534,-71.9762,Putnam,CT,food;economics,3,1-5,funding;community_engagement,Farmers-market and local-economy programs in Windham County.,
