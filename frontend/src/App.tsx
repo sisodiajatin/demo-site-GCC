@@ -2,16 +2,26 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { FilterSidebar } from "./components/FilterSidebar";
 import { MapView } from "./components/MapView";
 import { OrgListView } from "./components/OrgListView";
+import { AnalysisView } from "./components/AnalysisView";
 import { StatsBar } from "./components/StatsBar";
 import { fetchOrganizations, fetchCoverageGaps, fetchStats } from "./api";
-import type { Organization, CoverageGap, Stats, OrgType, FocusArea } from "./types";
+import type {
+  Organization,
+  CoverageGap,
+  Stats,
+  OrgType,
+  FocusArea,
+  ClimateApproach,
+  View,
+} from "./types";
 
 export default function App() {
   const [search, setSearch] = useState("");
   const [orgType, setOrgType] = useState<OrgType | "">("");
   const [focusArea, setFocusArea] = useState<FocusArea | "">("");
+  const [climateApproach, setClimateApproach] = useState<ClimateApproach | "">("");
   const [showGaps, setShowGaps] = useState(true);
-  const [view, setView] = useState<"map" | "list">("map");
+  const [view, setView] = useState<View>("map");
 
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [gaps, setGaps] = useState<CoverageGap[]>([]);
@@ -25,6 +35,7 @@ export default function App() {
       orgType: orgType || undefined,
       focusArea: focusArea || undefined,
       search: search || undefined,
+      climateApproach: climateApproach || undefined,
     };
     fetchOrganizations(filters).then(setOrganizations).catch((e) => setError(String(e)));
     fetchStats(filters).then(setStats).catch((e) => setError(String(e)));
@@ -43,7 +54,7 @@ export default function App() {
 
   useEffect(() => {
     loadSelection();
-  }, [orgType, focusArea, search]);
+  }, [orgType, focusArea, search, climateApproach]);
 
   useEffect(() => {
     loadGaps();
@@ -68,22 +79,24 @@ export default function App() {
           search={search}
           orgType={orgType}
           focusArea={focusArea}
+          climateApproach={climateApproach}
           showGaps={showGaps}
           view={view}
           onSearchChange={setSearch}
           onOrgTypeChange={setOrgType}
           onFocusAreaChange={setFocusArea}
+          onClimateApproachChange={setClimateApproach}
           onShowGapsChange={setShowGaps}
           onViewChange={setView}
           onImported={refetchAll}
         />
 
         <main style={styles.main}>
-          {view === "map" ? (
+          {view === "map" && (
             <MapView organizations={organizations} gaps={gaps} showGaps={showGaps} />
-          ) : (
-            <OrgListView organizations={organizations} />
           )}
+          {view === "list" && <OrgListView organizations={organizations} />}
+          {view === "analysis" && <AnalysisView stats={stats} />}
         </main>
       </div>
     </div>

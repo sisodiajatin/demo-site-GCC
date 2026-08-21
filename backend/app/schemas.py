@@ -11,6 +11,7 @@ class OrganizationBase(BaseModel):
     focus_areas: list[str] = []
     age_years: int | None = None
     staff_size: str | None = None
+    climate_approach: str | None = None
     barriers: list[str] = []
     mission_summary: str | None = None
     website: str | None = None
@@ -31,3 +32,5 @@ class StatsOut(BaseModel):
     total: int
     by_focus: dict[str, int]
     by_type: dict[str, int]
+    by_approach: dict[str, int]
+    by_staff_size: dict[str, int]

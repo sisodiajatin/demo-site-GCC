@@ -51,6 +51,13 @@ app.add_middleware(
 )
 
 
+# Response categories, kept in one place so the API, the CSV importer, and the
+# zero-filled stats buckets can't drift apart.
+ORG_TYPES = ("organization", "municipality", "committee", "individual")
+CLIMATE_APPROACHES = ("mitigation", "adaptation", "both")
+STAFF_SIZES = ("1-5", "6+")
+
+
 def _valid_coords(latitude: float | None, longitude: float | None) -> bool:
     """A coordinate pair is usable only if it is present, finite, and on
     the globe. Guards the grid scan in /coverage-gaps against garbage that
@@ -67,12 +74,15 @@ def _filtered_organizations(
     org_type: str | None = None,
     focus_area: str | None = None,
     search: str | None = None,
+    climate_approach: str | None = None,
 ) -> list[models.Organization]:
     """The one place filtering happens, so /organizations and /stats cannot
     drift apart and report different numbers for the same selection."""
     query = db.query(models.Organization)
     if org_type:
         query = query.filter(models.Organization.org_type == org_type)
+    if climate_approach:
+        query = query.filter(models.Organization.climate_approach == climate_approach)
     if search:
         like = f"%{search.lower()}%"
         query = query.filter(
@@ -94,11 +104,12 @@ def get_organizations(
     org_type: str | None = None,
     focus_area: str | None = None,
     search: str | None = None,
+    climate_approach: str | None = None,
     db: Session = Depends(get_db),
 ):
-    """List orgs, optionally filtered by type, focus area, and/or a
-    free-text search against name and city."""
-    return _filtered_organizations(db, org_type, focus_area, search)
+    """List orgs, optionally filtered by type, focus area, climate approach,
+    and/or a free-text search against name and city."""
+    return _filtered_organizations(db, org_type, focus_area, search, climate_approach)
 
 
 @app.get("/organizations/{org_id}", response_model=schemas.OrganizationOut)
@@ -168,27 +179,42 @@ def get_stats(
     org_type: str | None = None,
     focus_area: str | None = None,
     search: str | None = None,
+    climate_approach: str | None = None,
     db: Session = Depends(get_db),
 ):
-    """Counts by type and focus area for the *current selection*, using the
-    same filters as /organizations -- so the stats bar always describes the
-    rows the map is actually showing."""
-    orgs = _filtered_organizations(db, org_type, focus_area, search)
+    """Counts by type, focus area, climate approach, and staff size for the
+    *current selection*, using the same filters as /organizations -- so the
+    dashboard always describes the rows the map is actually showing.
+
+    by_approach and by_staff_size are the two splits GCC's own published
+    survey analysis leads with, recomputed live instead of re-exported.
+    """
+    orgs = _filtered_organizations(db, org_type, focus_area, search, climate_approach)
     focus_counts: dict[str, int] = {}
     for o in orgs:
         for f in (o.focus_areas or []):
             focus_counts[f] = focus_counts.get(f, 0) + 1
 
-    type_counts = {
-        t: sum(1 for o in orgs if o.org_type == t)
-        for t in ["organization", "municipality", "committee", "individual"]
+    # Zero-filled from the canonical category lists so a category that drops to
+    # zero under a filter still renders as an empty slot rather than vanishing.
+    type_counts = {t: sum(1 for o in orgs if o.org_type == t) for t in ORG_TYPES}
+    approach_counts = {
+        a: sum(1 for o in orgs if o.climate_approach == a) for a in CLIMATE_APPROACHES
     }
+    staff_counts = {s: sum(1 for o in orgs if o.staff_size == s) for s in STAFF_SIZES}
 
-    return {"total": len(orgs), "by_focus": focus_counts, "by_type": type_counts}
+    return {
+        "total": len(orgs),
+        "by_focus": focus_counts,
+        "by_type": type_counts,
+        "by_approach": approach_counts,
+        "by_staff_size": staff_counts,
+    }
 
 
 REQUIRED_CSV_FIELDS = ["name", "org_type", "latitude", "longitude", "city", "state"]
-VALID_ORG_TYPES = {"organization", "municipality", "committee", "individual"}
+VALID_ORG_TYPES = set(ORG_TYPES)
+VALID_APPROACHES = set(CLIMATE_APPROACHES)
 
 
 def _parse_list_cell(value: str) -> list[str]:
@@ -205,7 +231,8 @@ async def import_csv(file: UploadFile = File(...), db: Session = Depends(get_db)
     """
     Bulk-import organizations from a CSV export. Expected columns:
     name, org_type, latitude, longitude, city, state, focus_areas,
-    age_years, staff_size, barriers, mission_summary, website
+    age_years, staff_size, climate_approach, barriers, mission_summary,
+    website
 
     This is intentionally forgiving: bad rows are skipped and reported
     rather than failing the whole import, since a real-world survey
@@ -244,6 +271,19 @@ async def import_csv(file: UploadFile = File(...), db: Session = Depends(get_db)
             })
             continue
 
+        # Optional, but a closed vocabulary: a typo here would silently skew the
+        # mitigation/adaptation chart, so report it rather than drop it quietly.
+        climate_approach = (row.get("climate_approach") or "").strip().lower() or None
+        if climate_approach and climate_approach not in VALID_APPROACHES:
+            errors.append({
+                "row": i,
+                "reason": (
+                    f"invalid climate_approach '{climate_approach}' "
+                    f"(expected one of: {', '.join(CLIMATE_APPROACHES)})"
+                ),
+            })
+            continue
+
         age_years = None
         if row.get("age_years"):
             try:
@@ -261,6 +301,7 @@ async def import_csv(file: UploadFile = File(...), db: Session = Depends(get_db)
             focus_areas=_parse_list_cell(row.get("focus_areas", "")),
             age_years=age_years,
             staff_size=(row.get("staff_size") or "").strip() or None,
+            climate_approach=climate_approach,
             barriers=_parse_list_cell(row.get("barriers", "")),
             mission_summary=(row.get("mission_summary") or "").strip() or None,
             website=(row.get("website") or "").strip() or None,

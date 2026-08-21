@@ -18,14 +18,21 @@ This project is a small, honest attempt at those two gaps:
 | GCC's stated phase | What this project does |
 |---|---|
 | Phase 1 — Data collection | A CSV import endpoint that bulk-loads organizations from a survey-style export, skipping and reporting bad rows instead of failing the whole batch |
-| Phase 2 — Data analysis | The stats bar aggregates org counts by type and focus area live, from whatever's currently filtered — no manual re-export needed |
-| Phase 3 — Mapping organizations | An interactive map with pins, popups, filters by org type / focus area, and free-text search by name or city |
+| Phase 2 — Data analysis | An Analysis view that reproduces the two splits GCC's published survey analysis leads with — mitigation vs. adaptation, and staff size — recomputed live from whatever's currently filtered, so a new import updates the charts instead of requiring a re-exported image |
+| Phase 3 — Mapping organizations | An interactive map with pins, popups, filters by org type / focus area / climate approach, and free-text search by name or city |
 | Phase 5 — Solution development ("climate resource deserts") | A coverage-gap overlay that grids the map and flags cells with no nearby orgs |
 
 **All data in this project is fictional demo data** — 28 made-up
 organizations spread across real New England towns, built to mirror the
 shape of GCC's real survey (same `org_type` categories, same 6 focus areas,
-same barrier list) without using any of their actual respondents' data.
+same barrier list, same mitigation/adaptation split, same `1-5` / `6+` staff
+banding) without using any of their actual respondents' data.
+
+The demo set is weighted so 67.9% of it is mitigation-focused, close to the
+67.5% in GCC's Sept–Oct 2025 snapshot — deliberately, so the Analysis view
+demonstrates reproducing a chart they actually publish. **The invented
+numbers are not findings**; they show that the pipeline computes, not
+anything true about New England climate organizations.
 
 ## Stack
 
@@ -69,11 +76,11 @@ nothing to configure.
 
 | Endpoint | What it does |
 |---|---|
-| `GET /organizations` | List orgs. Optional `org_type`, `focus_area`, and `search` (matches name or city) query params |
+| `GET /organizations` | List orgs. Optional `org_type`, `focus_area`, `climate_approach`, and `search` (matches name or city) query params |
 | `GET /organizations/{id}` | Single org |
 | `POST /organizations/import-csv` | Bulk-import orgs from a CSV file (multipart upload). See `sample-import.csv` for the expected columns and a ready-to-use example |
 | `GET /coverage-gaps` | Grid cells with no nearby orgs. Optional `grid_size` (degrees, default 0.5) |
-| `GET /stats` | Counts by type and by focus area. Takes the same `org_type`, `focus_area`, and `search` params as `/organizations`, so the stats always describe the current selection |
+| `GET /stats` | Counts by type, focus area, climate approach, and staff size. Takes the same filter params as `/organizations`, so the stats and charts always describe the current selection |
 
 ## Known limitations (said out loud on purpose)
 
@@ -88,6 +95,11 @@ nothing to configure.
   that check a single `inf` row would stretch the coverage-gap bounding box
   until the request never finished. Names, cities, and websites are still
   taken as given.
+- **The schema is inferred from GCC's published charts, not from their real
+  export.** `climate_approach` and the staff bands were reverse-engineered
+  from the percentages they report; the real survey almost certainly has
+  fields and free-text answers this doesn't model. It would need a look at
+  an actual export before it could be trusted.
 - **`focus_area` filtering happens in Python**, not SQL, because SQLite's
   JSON querying is awkward. Fine at this scale; at a few thousand rows I'd
   normalize `focus_areas` into a proper join table.

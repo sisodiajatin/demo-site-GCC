@@ -77,8 +77,9 @@ export function CsvImport({ onImported }: Props) {
       {error && <p style={{ ...styles.status, color: "#a23b1a" }}>{error}</p>}
       <p style={styles.hint}>
         Columns: name, org_type, latitude, longitude, city, state, focus_areas, age_years,
-        staff_size, barriers, mission_summary, website. Use ";" to separate multiple focus areas
-        or barriers in one cell.
+        staff_size, climate_approach, barriers, mission_summary, website. Use ";" to separate
+        multiple focus areas or barriers in one cell. climate_approach is mitigation, adaptation,
+        or both.
       </p>
     </div>
   );

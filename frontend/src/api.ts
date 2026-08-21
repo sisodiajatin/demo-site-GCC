@@ -17,6 +17,7 @@ export interface OrgFilters {
   orgType?: string;
   focusArea?: string;
   search?: string;
+  climateApproach?: string;
 }
 
 // /organizations and /stats take the same filters, so they build the same
@@ -27,6 +28,7 @@ function filterQuery(filters: OrgFilters): string {
   if (filters.orgType) params.set("org_type", filters.orgType);
   if (filters.focusArea) params.set("focus_area", filters.focusArea);
   if (filters.search) params.set("search", filters.search);
+  if (filters.climateApproach) params.set("climate_approach", filters.climateApproach);
   const qs = params.toString();
   return qs ? `?${qs}` : "";
 }

@@ -32,6 +32,11 @@ class Organization(Base):
     # "1-5" | "6+"
     staff_size = Column(String, nullable=True)
 
+    # mitigation | adaptation | both -- the split GCC's own published analysis
+    # leads with ("67.5% mitigation-focused"), so the dashboard can reproduce
+    # that chart instead of only counting things they don't report on.
+    climate_approach = Column(String, index=True, nullable=True)
+
     # subset of: staffing, funding, community_engagement, other
     barriers = Column(JSON, default=list)
 

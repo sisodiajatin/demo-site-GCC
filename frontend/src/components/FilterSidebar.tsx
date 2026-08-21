@@ -1,30 +1,48 @@
 import type { CSSProperties } from "react";
-import { ORG_TYPES, FOCUS_AREAS, type OrgType, type FocusArea } from "../types";
+import {
+  ORG_TYPES,
+  FOCUS_AREAS,
+  CLIMATE_APPROACHES,
+  type OrgType,
+  type FocusArea,
+  type ClimateApproach,
+  type View,
+} from "../types";
 import { CsvImport } from "./CsvImport";
 
 interface Props {
   search: string;
   orgType: OrgType | "";
   focusArea: FocusArea | "";
+  climateApproach: ClimateApproach | "";
   showGaps: boolean;
-  view: "map" | "list";
+  view: View;
   onSearchChange: (v: string) => void;
   onOrgTypeChange: (v: OrgType | "") => void;
   onFocusAreaChange: (v: FocusArea | "") => void;
+  onClimateApproachChange: (v: ClimateApproach | "") => void;
   onShowGapsChange: (v: boolean) => void;
-  onViewChange: (v: "map" | "list") => void;
+  onViewChange: (v: View) => void;
   onImported: () => void;
 }
+
+const VIEWS: { key: View; label: string }[] = [
+  { key: "map", label: "Map" },
+  { key: "list", label: "List" },
+  { key: "analysis", label: "Analysis" },
+];
 
 export function FilterSidebar({
   search,
   orgType,
   focusArea,
+  climateApproach,
   showGaps,
   view,
   onSearchChange,
   onOrgTypeChange,
   onFocusAreaChange,
+  onClimateApproachChange,
   onShowGapsChange,
   onViewChange,
   onImported,
@@ -32,18 +50,15 @@ export function FilterSidebar({
   return (
     <aside style={styles.sidebar}>
       <div style={styles.viewToggle}>
-        <button
-          style={{ ...styles.toggleBtn, ...(view === "map" ? styles.toggleBtnActive : {}) }}
-          onClick={() => onViewChange("map")}
-        >
-          Map
-        </button>
-        <button
-          style={{ ...styles.toggleBtn, ...(view === "list" ? styles.toggleBtnActive : {}) }}
-          onClick={() => onViewChange("list")}
-        >
-          List
-        </button>
+        {VIEWS.map((v) => (
+          <button
+            key={v.key}
+            style={{ ...styles.toggleBtn, ...(view === v.key ? styles.toggleBtnActive : {}) }}
+            onClick={() => onViewChange(v.key)}
+          >
+            {v.label}
+          </button>
+        ))}
       </div>
 
       <label style={styles.label}>
@@ -89,6 +104,22 @@ export function FilterSidebar({
         </select>
       </label>
 
+      <label style={styles.label}>
+        Climate approach
+        <select
+          style={styles.select}
+          value={climateApproach}
+          onChange={(e) => onClimateApproachChange(e.target.value as ClimateApproach | "")}
+        >
+          <option value="">All approaches</option>
+          {CLIMATE_APPROACHES.map((a) => (
+            <option key={a} value={a}>
+              {a[0].toUpperCase() + a.slice(1)}
+            </option>
+          ))}
+        </select>
+      </label>
+
       {view === "map" && (
         <label style={styles.checkboxRow}>
           <input
@@ -120,6 +151,7 @@ const styles: Record<string, CSSProperties> = {
     display: "flex",
     flexDirection: "column",
     gap: 18,
+    overflowY: "auto",
   },
   viewToggle: {
     display: "flex",
@@ -130,7 +162,8 @@ const styles: Record<string, CSSProperties> = {
   },
   toggleBtn: {
     flex: 1,
-    padding: "6px 0",
+    minWidth: 0,
+    padding: "6px 2px",
     border: "none",
     borderRadius: 6,
     background: "transparent",
