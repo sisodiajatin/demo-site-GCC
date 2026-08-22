@@ -20,7 +20,7 @@ This project is a small, honest attempt at those two gaps:
 | Phase 1 — Data collection | A CSV import endpoint that bulk-loads organizations from a survey-style export, skipping and reporting bad rows instead of failing the whole batch |
 | Phase 2 — Data analysis | An Analysis view that reproduces the two splits GCC's published survey analysis leads with — mitigation vs. adaptation, and staff size — recomputed live from whatever's currently filtered, so a new import updates the charts instead of requiring a re-exported image |
 | Phase 3 — Mapping organizations | An interactive map with pins, popups, filters by org type / focus area / climate approach, and free-text search by name or city |
-| Phase 5 — Solution development ("climate resource deserts") | A coverage-gap overlay that grids the map and flags cells with no nearby orgs |
+| Phase 5 — Solution development ("climate resource deserts") | A coverage-gap overlay that grids the map and flags unserved cells bordering served ones — holes in coverage, not just empty space |
 
 **All data in this project is fictional demo data** — 28 made-up
 organizations spread across real New England towns, built to mirror the
@@ -86,8 +86,14 @@ nothing to configure.
 ## Known limitations (said out loud on purpose)
 
 - **Coverage-gap detection is a naive grid scan**, not a real geospatial
-  index. Fine at 28 rows; at real scale I'd reach for PostGIS or a k-d tree
-  for actual nearest-neighbor distance instead of fixed grid cells. The
+  index. An empty cell only counts as a gap if a neighbouring cell has
+  organizations in it — without that rule the overlay flags open ocean and
+  everything past the edge of the data, which buries the cases worth
+  looking at. That neighbour test is a heuristic standing in for population
+  data, not a substitute for it: a cell can still be mostly water, and the
+  grid knows nothing about who lives where. At real scale I'd reach for
+  PostGIS or a k-d tree for actual nearest-neighbour distance, weighted by
+  population, instead of fixed grid cells. The
   endpoint refuses a `grid_size` that would produce more than 5,000 cells
   over the current data extent, rather than returning a rectangle list no
   browser can draw.

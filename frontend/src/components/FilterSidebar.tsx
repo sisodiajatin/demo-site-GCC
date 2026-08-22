@@ -133,7 +133,8 @@ export function FilterSidebar({
       )}
 
       <p style={styles.note}>
-        Coverage gaps are grid cells with no respondents nearby — a rough stand-in for what GCC
+        Coverage gaps are grid cells with no respondents that sit next to cells that have them —
+        a hole in coverage rather than merely the edge of the data. A rough stand-in for what GCC
         calls "climate resource deserts."
       </p>
 

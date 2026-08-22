@@ -136,10 +136,20 @@ def get_coverage_gaps(
     db: Session = Depends(get_db),
 ):
     """
-    Grid the bounding box of all orgs and flag cells with zero orgs in
-    them -- a simple stand-in for GCC's "climate resource desert" idea.
-    Not a real geospatial index; fine at this scale, said out loud as a
-    known limitation.
+    Grid the bounding box of all orgs and flag empty cells that *border a
+    cell containing organizations* -- a simple stand-in for GCC's "climate
+    resource desert" idea.
+
+    The neighbour rule matters. Flagging every empty cell in the bounding
+    box marks open ocean and the wilderness past the edge of the data,
+    which buries the interesting cases: an unserved area with served
+    neighbours is a hole in coverage, whereas an unserved area with no
+    served neighbours is usually just somewhere nobody lives.
+
+    It is a heuristic standing in for population data, not a substitute for
+    it. A real version would measure distance to the nearest organization
+    and weight by who actually lives there. Said out loud as a known
+    limitation.
     """
     orgs = [
         o for o in db.query(models.Organization).all()
@@ -164,18 +174,32 @@ def get_coverage_gaps(
             ),
         )
 
+    # Which cells hold at least one org. Bucket each org once rather than
+    # rescanning every org per cell.
+    occupied: set[tuple[int, int]] = set()
+    for o in orgs:
+        i = int((o.latitude - min_lat) // grid_size)
+        j = int((o.longitude - min_lng) // grid_size)
+        occupied.add((i, j))
+
+    def borders_coverage(i: int, j: int) -> bool:
+        return any(
+            (i + di, j + dj) in occupied
+            for di in (-1, 0, 1)
+            for dj in (-1, 0, 1)
+            if not (di == 0 and dj == 0)
+        )
+
     gaps = []
     for i in range(lat_steps):
-        lat = min_lat + i * grid_size
         for j in range(lng_steps):
-            lng = min_lng + j * grid_size
-            count = sum(
-                1 for o in orgs
-                if lat <= o.latitude < lat + grid_size
-                and lng <= o.longitude < lng + grid_size
-            )
-            if count == 0:
-                gaps.append({"lat": lat, "lng": lng, "size": grid_size})
+            if (i, j) in occupied or not borders_coverage(i, j):
+                continue
+            gaps.append({
+                "lat": min_lat + i * grid_size,
+                "lng": min_lng + j * grid_size,
+                "size": grid_size,
+            })
     return gaps
 
 
