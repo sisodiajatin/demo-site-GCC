@@ -44,3 +44,17 @@ export function fetchCoverageGaps(gridSize = 0.5): Promise<CoverageGap[]> {
 export function fetchStats(filters: OrgFilters = {}): Promise<Stats> {
   return getJSON<Stats>(`/stats${filterQuery(filters)}`);
 }
+
+export interface ResetResult {
+  removed: number;
+  seeded: number;
+}
+
+/** Restores the original demo set, whatever has been imported since. */
+export async function resetDemoData(): Promise<ResetResult> {
+  const res = await fetch(`${BASE_URL}/organizations/reset-demo`, { method: "POST" });
+  if (!res.ok) {
+    throw new Error(`Reset failed: ${res.status} ${res.statusText}`);
+  }
+  return res.json() as Promise<ResetResult>;
+}

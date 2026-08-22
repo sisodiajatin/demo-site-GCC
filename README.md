@@ -79,6 +79,7 @@ nothing to configure.
 | `GET /organizations` | List orgs. Optional `org_type`, `focus_area`, `climate_approach`, and `search` (matches name or city) query params |
 | `GET /organizations/{id}` | Single org |
 | `POST /organizations/import-csv` | Bulk-import orgs from a CSV file (multipart upload). See `sample-import.csv` for the expected columns and a ready-to-use example |
+| `POST /organizations/reset-demo` | Delete every org and restore the original demo set. Exposed in the UI as "Reset to demo data" |
 | `GET /coverage-gaps` | Grid cells with no nearby orgs. Optional `grid_size` (degrees, default 0.5) |
 | `GET /stats` | Counts by type, focus area, climate approach, and staff size. Takes the same filter params as `/organizations`, so the stats and charts always describe the current selection |
 
@@ -103,9 +104,14 @@ nothing to configure.
 - **`focus_area` filtering happens in Python**, not SQL, because SQLite's
   JSON querying is awkward. Fine at this scale; at a few thousand rows I'd
   normalize `focus_areas` into a proper join table.
-- **CSV import has no auth** — anyone who can reach the API can add rows.
-  Fine for a local demo; a real deployment would need at minimum an admin
-  token on the import endpoint before GCC could actually use it.
+- **The write endpoints have no auth** — anyone who can reach the API can
+  add rows, and `POST /organizations/reset-demo` will happily delete
+  everything. That's acceptable for a local demo and clearly not for a
+  deployment; both endpoints would need at minimum an admin token, and the
+  reset almost certainly shouldn't exist outside a demo build at all.
+- **The API can create and read, but not update or delete individual
+  rows.** Fixing a typo in one organization's name means resetting the
+  whole dataset. The write side is a prototype.
 - **The import is additive only** — there's no de-duplication, so importing
   the same file twice creates duplicate rows. A real version would match on
   something like name + city before inserting.

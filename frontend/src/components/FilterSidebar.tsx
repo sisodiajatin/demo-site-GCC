@@ -9,6 +9,7 @@ import {
   type View,
 } from "../types";
 import { CsvImport } from "./CsvImport";
+import { ResetDemoData } from "./ResetDemoData";
 
 interface Props {
   search: string;
@@ -137,6 +138,8 @@ export function FilterSidebar({
       </p>
 
       <CsvImport onImported={onImported} />
+
+      <ResetDemoData onReset={onImported} />
     </aside>
   );
 }

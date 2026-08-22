@@ -14,13 +14,18 @@ from .seed_data import DEMO_ORGANIZATIONS
 Base.metadata.create_all(bind=engine)
 
 
+def _seed(db: Session) -> int:
+    for row in DEMO_ORGANIZATIONS:
+        db.add(models.Organization(**row))
+    db.commit()
+    return len(DEMO_ORGANIZATIONS)
+
+
 def seed_if_empty():
     db: Session = SessionLocal()
     try:
         if db.query(models.Organization).count() == 0:
-            for row in DEMO_ORGANIZATIONS:
-                db.add(models.Organization(**row))
-            db.commit()
+            _seed(db)
     finally:
         db.close()
 
@@ -310,3 +315,22 @@ async def import_csv(file: UploadFile = File(...), db: Session = Depends(get_db)
 
     db.commit()
     return {"imported": imported, "skipped": len(errors), "errors": errors}
+
+
+@app.post("/organizations/reset-demo")
+def reset_demo_data(db: Session = Depends(get_db)):
+    """
+    Drop every organization and reseed the original demo set.
+
+    The SQLite file lives inside the container, so without this, "get back
+    to a known state" depends on Docker's container lifecycle -- and only
+    `docker compose down` actually discards it. `stop`, `restart`, a machine
+    reboot, or Docker Desktop closing all quietly preserve imported rows,
+    which is a bad thing to discover shortly before a demo. This makes the
+    reset something the app owns rather than an incantation you have to
+    remember correctly under pressure.
+    """
+    removed = db.query(models.Organization).delete()
+    db.commit()
+    seeded = _seed(db)
+    return {"removed": removed, "seeded": seeded}
